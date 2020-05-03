@@ -21,6 +21,10 @@ import zmq
 import time
 import argparse
 import json
+import copy
+
+from filterpy.kalman import KalmanFilter
+from filterpy.common import Q_discrete_white_noise
 
 import numpy as np
 
@@ -30,11 +34,40 @@ ACTIVE_MAP = 'Town06'
 DEFAULT_VEHICLE = 'vehicle.bmw.grandtourer'
 
 
+f = KalmanFilter(dim_x=2, dim_z=1)
+
+# f.x = np.array([[2.],    # position
+#                 [0.]])   # velocity
+
+f.x = np.array([0., 0.0])
+
+f.F = np.array([[1., 1.],
+                [0., 1.]])
+
+f.H = np.array([[1., 0.]])
+
+# f.P *= 1000.
+
+f.P = np.array([[1000.,    0.],
+                [   0., 1000.] ])
+
+# f.R = 5
+
+f.R = np.array([[5.]])
+
+f.Q = Q_discrete_white_noise(dim=2, dt=0.1, var=0.13)
+
+fx = copy.deepcopy(f)
+fy = copy.deepcopy(f)
+
+
 class VehicleData(object):
-    def __init__(self, i=0, x=0, y=0):
+    def __init__(self, i=0, x=0, y=0, ex=0, ey=0):
         self.i = i
         self.x = x
         self.y = y
+        self.ex = ex
+        self.ey = ey
 
 
 class CarlaHandler(object):
@@ -88,6 +121,11 @@ class CarlaHandler(object):
             self.map = self.world.get_map()
             spawn_points = self.map.get_spawn_points()
 
+            # for i, waypoint in enumerate(spawn_points):
+            #     self.world.debug.draw_string(waypoint.location, str(i), draw_shadow=False,
+            #                             color=carla.Color(r=255, g=255, b=255), life_time=10000.2,
+            #                             persistent_lines=True)
+
             vehicle_bp = random.choice(self.world.get_blueprint_library().filter(DEFAULT_VEHICLE))
             transform = random.choice(self.world.get_map().get_spawn_points())
             self.vehicle = self.world.try_spawn_actor(vehicle_bp, transform)
@@ -123,22 +161,32 @@ class CarlaHandler(object):
         t = self.vehicle.get_transform()
         # v = self.vehicle.get_velocity()
 
-        crt_time = time.perf_counter()
-        delta_time = crt_time - self.last_time
-        time_factor = world_snapshot.timestamp.delta_seconds/delta_time
-        self.last_time = crt_time
+        fx.predict()
+        fx.update(t.location.x)
 
-        print('Frame ID #{}, x{:.03}, {:.06f} {:.06f} {:.06f} ({:.1f}, {:.1f})'.format(world_snapshot.frame,
-                                                                                           time_factor,
-                                                                                           world_snapshot.timestamp.elapsed_seconds,
-                                                                                           world_snapshot.timestamp.delta_seconds,
-                                                                                           delta_time,
-                                                                                           t.location.x,
-                                                                                           t.location.y))
+        fy.predict()
+        fy.update(t.location.y)
+
+        # crt_time = time.perf_counter()
+        # delta_time = crt_time - self.last_time
+        # time_factor = world_snapshot.timestamp.delta_seconds/delta_time
+        # self.last_time = crt_time
+        #
+        # print('Frame ID #{}, x{:.03}, {:.06f} {:.06f} {:.06f} ({:.1f}, {:.1f})'.format(world_snapshot.frame,
+        #                                                                                time_factor,
+        #                                                                                world_snapshot.timestamp.elapsed_seconds,
+        #                                                                                world_snapshot.timestamp.delta_seconds,
+        #                                                                                delta_time,
+        #                                                                                t.location.x,
+        #                                                                                t.location.y,
+        #                                                                                f.x[0],
+        #                                                                                fy.x[0]))
 
         self.zmqsocket.send_string(json.dumps(VehicleData(i=world_snapshot.timestamp.elapsed_seconds,
                                                           x=t.location.x,
-                                                          y=t.location.y).__dict__))
+                                                          y=t.location.y,
+                                                          ex=fx.x[0],
+                                                          ey=fy.x[0]).__dict__))
 
         self.active = True
 

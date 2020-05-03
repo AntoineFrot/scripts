@@ -63,10 +63,12 @@ def update_graph_live(n):
     data = {
         'time': app.list_t,
         'x': app.list_x,
-        'y': app.list_y
+        'y': app.list_y,
+        'ex': app.list_ex,
+        'ey': app.list_ey
     }
 
-    # print(data['x'], data['y'])
+    # print(data['x'], data['y'], data['ex'], data['ey'])
 
     # Create the graph with subplots
     fig = plotly.subplots.make_subplots(rows=2,
@@ -90,8 +92,22 @@ def update_graph_live(n):
     }, 1, 1)
     fig.append_trace({
         'x': data['time'],
+        'y': data['ex'],
+        'name': 'ex = f(t)',
+        'mode': 'lines',
+        'type': 'scatter'
+    }, 1, 1)
+    fig.append_trace({
+        'x': data['time'],
         'y': data['y'],
         'name': 'y = f(t)',
+        'mode': 'lines',
+        'type': 'scatter'
+    }, 1, 2)
+    fig.append_trace({
+        'x': data['time'],
+        'y': data['ey'],
+        'name': 'ey = f(t)',
         'mode': 'lines',
         'type': 'scatter'
     }, 1, 2)
@@ -100,6 +116,14 @@ def update_graph_live(n):
         'y': data['y'],
         'text': 'real',
         'name': 'xy',
+        'mode': 'lines',
+        'type': 'scatter'
+    }, 2, 1)
+    fig.append_trace({
+        'x': data['ex'],
+        'y': data['ey'],
+        'text': 'estimated',
+        'name': 'estim xy',
         'mode': 'lines',
         'type': 'scatter'
     }, 2, 1)
@@ -128,6 +152,8 @@ def receive_data():
         app.list_t.append(o['i'])  # o.i
         app.list_x.append(o['x'])  # o.x
         app.list_y.append(o['y'])  # o.y
+        app.list_ex.append(o['ex'])  # o.ex
+        app.list_ey.append(o['ey'])  # o.ey
 
         time.sleep(.01)
 
@@ -141,6 +167,8 @@ if __name__ == '__main__':
     app.list_t = []
     app.list_x = []
     app.list_y = []
+    app.list_ex = []
+    app.list_ey = []
 
     try:
         timerThread = threading.Thread(target=receive_data)
