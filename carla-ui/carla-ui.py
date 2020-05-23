@@ -9,22 +9,20 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 
+import dash_daq as daq
+
 from threading import Thread
 import xmlrpc.client
 
 from carla_daemon import client_thread
+from carla_daemon import XMLRPC_PORT
 
 MAX_STATUS_BUFFER_LEN = 8
 
 t1 = Thread(target=client_thread, args=())
 t1.start()
 
-# with xmlrpc.client.ServerProxy("http://localhost:8000/") as proxy:
-#     print(proxy.add(9, 5))
-#     print(proxy.system.listMethods())
-
-proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
-# print(proxy.add(123, 234))
+proxy = xmlrpc.client.ServerProxy('http://localhost:{}/'.format(XMLRPC_PORT))
 
 external_stylesheets = [dbc.themes.BOOTSTRAP, 'https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -32,37 +30,48 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 ui_towns = dbc.Col([
     html.H6('Towns'),
-    dcc.Dropdown(
-        id='dropdown_towns',
-        options=[
-            {'label': 'Town01', 'value': 'Town01'},
-            {'label': 'Town02', 'value': 'Town02'},
-            {'label': 'Town03', 'value': 'Town03'},
-            {'label': 'Town04', 'value': 'Town04'},
-            {'label': 'Town05', 'value': 'Town05'},
-            {'label': 'Town06', 'value': 'Town06'},
-            {'label': 'Town07', 'value': 'Town07'},
-            {'label': 'Town10HD', 'value': 'Town10HD'}
-        ],
-        value='Town06',
-        clearable=False,
-        style=dict(
-            width='150px',
-            verticalAlign="middle"
-        )
-    )
+    dbc.Row([
+        dcc.Dropdown(
+            id='dropdown_towns',
+            options=[
+                {'label': 'Town01', 'value': 'Town01'},
+                {'label': 'Town02', 'value': 'Town02'},
+                {'label': 'Town03', 'value': 'Town03'},
+                {'label': 'Town04', 'value': 'Town04'},
+                {'label': 'Town05', 'value': 'Town05'},
+                {'label': 'Town06', 'value': 'Town06'},
+                {'label': 'Town07', 'value': 'Town07'},
+                {'label': 'Town10HD', 'value': 'Town10HD'}
+            ],
+            value='Town06',
+            clearable=False,
+            style=dict(
+                width='150px',
+                verticalAlign="middle"
+            )
+        ),
+        html.Button('Select town', id='carla_select_world'),
+    ])
 ])
 
 ui_ip_adress = dbc.Col([
     html.H6('IP address'),
     dbc.Row([
-        dcc.Input(id='ip1', type='number', min=0, max=255, step=1, size='3', value=127),
+        dcc.Input(id='ip1', type='number', min=0, max=255, step=1, size='4', value=127),
         html.Label('.'),
-        dcc.Input(id='ip2', type='number', min=0, max=255, step=1, size='3', value=0),
+        dcc.Input(id='ip2', type='number', min=0, max=255, step=1, size='4', value=0),
         html.Label('.'),
-        dcc.Input(id='ip3', type='number', min=0, max=255, step=1, size='3', value=0),
+        dcc.Input(id='ip3', type='number', min=0, max=255, step=1, size='4', value=0),
         html.Label('.'),
-        dcc.Input(id='ip4', type='number', min=0, max=255, step=1, size='3', value=1)
+        dcc.Input(id='ip4', type='number', min=0, max=255, step=1, size='4', value=1),
+        html.Label('|    |'),
+        daq.Indicator(
+            id='client-status',
+            value=False,
+            # color="#00cc96",
+            color="#aaaaaa",
+            size=40
+        )
     ])
 ])
 
@@ -123,63 +132,102 @@ app.layout = dbc.Container([
     html.Div(id='devnull', children=''),
     html.Div(id='devnull2', children=''),
     html.Div(id='devnull3', children=''),
+    html.Div(id='devnull4', children=''),
     dcc.Interval(
         id='interval-component',
         interval=1*1000, # in milliseconds
         n_intervals=0
     ),
 
-    dbc.Row([
+    dbc.Col([
         html.H4('CARLA UI'),
-    ]),
-    dbc.Row([
-        dbc.Card(dbc.CardBody(ui_ip_adress),
-                 style={"width": "600px"}),
-        html.Button('Connect to CARLA server', id='carla_load_client'),
-    ]),
-    dbc.Row([
-        dbc.Card(dbc.CardBody(ui_towns),
-                 style={"width": "600px"}),
-        html.Button('Select town', id='carla_select_world'),
-    ]),
-    dbc.Row([
-        dbc.Card(dbc.CardBody(ui_weather),
-                 style={"width": "600px"}),
-        # html.Button('Select weather', id='carla_select_weather'),
-    ]),
-    dbc.Row([
+        dbc.Row([
+            dbc.Col([
+                dbc.Card(dbc.CardBody(ui_ip_adress),
+                         style={"width": "600px"}),
+                # html.Button('Connect to CARLA server', id='carla_load_client'),
+
+                dbc.Card(dbc.CardBody(ui_towns), style={"width": "600px"}),
+
+                dbc.Card(dbc.CardBody(ui_weather), style={"width": "600px"}),
+                # html.Button('Select weather', id='carla_select_weather'),
+            ]),
+
+            dbc.Card(
+                dbc.Col([
+                    html.Button('Add vehicle', id='add_vehicle'),
+                    daq.Gauge(
+                        id='speed-gauge',
+                        min=0,
+                        max=100,
+                        value=0,
+                        color={"gradient": True,
+                               "ranges": {"green": [0, 33],
+                                          "yellow": [33, 66],
+                                          "red": [66, 100]}},
+                        showCurrentValue=True,
+                        units="kph",
+                    ),
+                ]),
+            ),
+        ]),
+
         dcc.Textarea(
             id='status-area',
             value='STATUS:\n',
             style={'width': '100%', 'height': 300},
         ),
+
     ]),
 ])
 
 
-# @app.callback(dash.dependencies.Output('status-area', 'value'),
-#               [dash.dependencies.Input('interval-component', 'n_intervals')],
-#               [dash.dependencies.State('status-area', 'value')])
-# def update_status(n, status_buffer):
-#     status_buffer_list = status_buffer.split('\n')
-#     if len(status_buffer_list) > MAX_STATUS_BUFFER_LEN:
-#         status_buffer_list.pop(1)
-#     try:
-#         msg = proxy.get_status()
-#     except:
-#         msg = '-no status available-'
-#     status_buffer_list.append(msg)
-#     return '\n'.join(status_buffer_list)
+@app.callback([dash.dependencies.Output('status-area', 'value'),
+               dash.dependencies.Output('client-status', 'value'),
+               dash.dependencies.Output('client-status', 'color'),
+               dash.dependencies.Output('speed-gauge', 'value')],
+              [dash.dependencies.Input('interval-component', 'n_intervals')],
+              [dash.dependencies.State('status-area', 'value')])
+def periodic_task(n, status_buffer):
 
+    # if n<10:
+    #     return '', False, '', 30.0
 
-@app.callback(
-    dash.dependencies.Output('devnull', 'children'),
-    [dash.dependencies.Input('carla_load_client', 'n_clicks')],
-    [])
-def load_client(n_clicks):
-    if n_clicks is not None:
+    client_status_color = "#00cc96"
+    client_status_value = True
+
+    status_buffer_list = status_buffer.split('\n')
+    if len(status_buffer_list) > MAX_STATUS_BUFFER_LEN:
+        status_buffer_list.pop(1)
+
+    # print(proxy.call_obj_method('client', 'get_available_maps'))
+
+    try:
         proxy.load_client()
-    return ''
+
+        try:
+            msg = proxy.get_status()
+        except:
+            msg = '-no status available-'
+            client_status_color = "#aaaaaa"
+            client_status_value = False
+    except:
+        msg = '-client not available-'
+        client_status_color = "#aaaaaa"
+        client_status_value = False
+
+    status_buffer_list.append(msg)
+    return '\n'.join(status_buffer_list), client_status_value, client_status_color, proxy.get_vehicle_speed()
+
+
+# @app.callback(
+#     dash.dependencies.Output('devnull', 'children'),
+#     [dash.dependencies.Input('carla_load_client', 'n_clicks')],
+#     [])
+# def load_client(n_clicks):
+#     if n_clicks is not None:
+#         proxy.load_client()
+#     return ''
 
 
 @app.callback(
@@ -206,6 +254,14 @@ def change_weather(value_cloudiness, value_precipitation,
     proxy.change_weather(value_cloudiness, value_precipitation,
                          value_deposits, value_wetness,
                          value_sun_azimuth_angle, value_sun_altitude_angle)
+    return ''
+
+@app.callback(
+    dash.dependencies.Output('devnull4', 'children'),
+    [dash.dependencies.Input('add_vehicle', 'n_clicks')])
+def add_vehicle(n_clicks):
+    if n_clicks is not None:
+        proxy.add_vehicle()
     return ''
 
 
