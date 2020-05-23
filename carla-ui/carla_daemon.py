@@ -234,7 +234,7 @@ class CarlaDaemon:
     #     self.active = True
 
 
-def client_thread():
+def xmlrpc_serving_CarlaDaemon():
 
     # Create server
     with SimpleXMLRPCServer(('localhost', XMLRPC_PORT), logRequests=False) as server:
