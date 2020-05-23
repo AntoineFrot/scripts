@@ -27,11 +27,8 @@ import carla
 
 XMLRPC_PORT = 8123
 PERIOD_SPECTATOR_MOVEMENT = 0.01  # s
-
-
-class StatusMessage:
-    def __init__(self, msg=''):
-        self.value = msg
+SPECTATOR_POS_X = -12.0  # meters, relative to vehicle
+SPECTATOR_POS_Z = 3.0
 
 
 TIME_STEP = 0.1
@@ -54,6 +51,15 @@ class CarlaDaemon:
     def __del__(self):
         self.set_timing_settings(synchronous_mode=False)
 
+    def safe_periodic_task(self, func):
+        def wrapper():
+            if self.periodic_task_active:
+                return
+            self.periodic_task_active = True
+            func()
+            self.periodic_task_active = False
+        return wrapper
+
     def set_timing_settings(self, synchronous_mode):
         """
         Sets synchronous_mode.
@@ -69,24 +75,14 @@ class CarlaDaemon:
         """
         Main program loop.
         """
-        # now = datetime.now()
-        # print('{}: load client'.format(now.strftime("%d/%m/%Y %H:%M:%S.%f")))
 
         if self.client is None:
             try:
                 self.client = carla.Client('127.0.0.1', 2000)
+                self.world = self.client.get_world()
+                self.world.on_tick(lambda world_snapshot: self.safe_periodic_task(self.move_spectator)())
             except:
                 return False
-            #self.out_q.put(StatusMessage('Client loaded'))
-
-        try:
-            self.world = self.client.get_world()
-            self.world.on_tick(lambda world_snapshot: self.move_spectator(world_snapshot))
-
-        except:
-            return False
-        # now = datetime.now()
-        # print('{}: loaded'.format(now.strftime("%d/%m/%Y %H:%M:%S.%f")))
 
         return True
 
@@ -98,11 +94,6 @@ class CarlaDaemon:
             self.client.load_world(map)
             self.client.set_timeout(10.0)
             self.world = self.client.get_world()
-            #self.out_q.put(StatusMessage('World loaded'))
-        else:
-            #self.out_q.put(StatusMessage('Client is None'))
-            pass
-
         return True
 
     def change_weather(self, value_cloudiness, value_precipitation,
@@ -123,7 +114,6 @@ class CarlaDaemon:
         self.weather.sun_altitude_angle = value_sun_altitude_angle
 
         self.world.set_weather(self.weather)
-
         return True
 
     def get_status(self):
@@ -144,8 +134,19 @@ class CarlaDaemon:
         transform = random.choice(self.world.get_map().get_spawn_points())
         self.vehicle = self.world.try_spawn_actor(vehicle_bp, transform)
         self.vehicle.set_autopilot()
-
         return True
+
+    def move_spectator(self):
+
+        if self.vehicle is not None:
+            spectator = self.world.get_spectator()
+            vehicle_transform = self.vehicle.get_transform()
+            yaw = vehicle_transform.rotation.yaw
+            spectator.set_transform(carla.Transform(vehicle_transform.location +
+                                                    carla.Location(SPECTATOR_POS_X * math.cos(yaw/180.0*math.pi),
+                                                                   SPECTATOR_POS_X * math.sin(yaw/180.0*math.pi),
+                                                                   SPECTATOR_POS_Z),
+                                                    carla.Rotation(yaw=yaw)))
 
     # def main(self):
     #
@@ -189,32 +190,15 @@ class CarlaDaemon:
     #
     #     return True
 
-    def move_spectator(self, world_snapshot):
-
-        # crt_time = time.perf_counter()
-        # delta_time = crt_time - self.last_time
-        # if delta_time < PERIOD_SPECTATOR_MOVEMENT:
-        #     return
-
-        # time_factor = world_snapshot.timestamp.delta_seconds/delta_time
-        # self.last_time = crt_time
-
-        if self.periodic_task_active:
-            return
-        self.periodic_task_active = True
-
-        if self.vehicle is not None:
-            spectator = self.world.get_spectator()
-            vehicle_transform = self.vehicle.get_transform()
-            yaw = vehicle_transform.rotation.yaw
-            spectator.set_transform(carla.Transform(vehicle_transform.location + carla.Location(-12.0 * math.cos(yaw/180.0*math.pi),
-                                                                                                -12.0 * math.sin(yaw/180.0*math.pi),
-                                                                                                3.0),
-                                                    carla.Rotation(yaw=yaw)))
-
-        self.periodic_task_active = False
 
     # def do_something(self, world_snapshot):
+    # crt_time = time.perf_counter()
+    #         # delta_time = crt_time - self.last_time
+    #         # if delta_time < PERIOD_SPECTATOR_MOVEMENT:
+    #         #     return
+    #
+    #         # time_factor = world_snapshot.timestamp.delta_seconds/delta_time
+    #         # self.last_time = crt_time
     #     # t = self.vehicle.get_transform()
     #     v = self.vehicle.get_velocity()
     #     print(v.x)

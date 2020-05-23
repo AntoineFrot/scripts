@@ -8,17 +8,17 @@ ui_towns = dbc.Col([
     dbc.Col([
         dcc.Dropdown(
             id='dropdown_towns',
-            # options=[
-            #     {'label': 'Town01', 'value': 'Town01'},
-            #     {'label': 'Town02', 'value': 'Town02'},
-            #     {'label': 'Town03', 'value': 'Town03'},
-            #     {'label': 'Town04', 'value': 'Town04'},
-            #     {'label': 'Town05', 'value': 'Town05'},
-            #     {'label': 'Town06', 'value': 'Town06'},
-            #     {'label': 'Town07', 'value': 'Town07'},
-            #     {'label': 'Town10HD', 'value': 'Town10HD'}
-            # ],
-            # value='Town06',
+            options=[
+                {'label': 'Town01', 'value': 'Town01'},
+                {'label': 'Town02', 'value': 'Town02'},
+                {'label': 'Town03', 'value': 'Town03'},
+                {'label': 'Town04', 'value': 'Town04'},
+                {'label': 'Town05', 'value': 'Town05'},
+                {'label': 'Town06', 'value': 'Town06'},
+                {'label': 'Town07', 'value': 'Town07'},
+                {'label': 'Town10HD', 'value': 'Town10HD'}
+            ],
+            value='Town06',
             clearable=False,
             style=dict(
                 width='150px',
@@ -109,7 +109,7 @@ ui_vehicle = dbc.Col([
         id='speed-gauge',
         min=0,
         max=100,
-        value=0,
+        value=0.0,
         color={"gradient": True,
                "ranges": {"green": [0, 33],
                           "yellow": [33, 66],
@@ -124,8 +124,13 @@ ui_main = dbc.Container([
     html.Div(id='hidden-div2', style={'display': 'none'}),
     html.Div(id='hidden-div3', style={'display': 'none'}),
     dcc.Interval(
-        id='interval-component',
-        interval=1000,  # in milliseconds
+        id='interval-component-fast',
+        interval=100,  # in milliseconds
+        n_intervals=0
+    ),
+    dcc.Interval(
+        id='interval-component-slow',
+        interval=2000,  # in milliseconds
         n_intervals=0
     ),
 
