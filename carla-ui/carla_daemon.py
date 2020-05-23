@@ -5,7 +5,9 @@ import os
 import sys
 import random
 import time
-import callme
+
+from xmlrpc.server import SimpleXMLRPCServer
+from xmlrpc.server import SimpleXMLRPCRequestHandler
 
 # ==============================================================================
 # -- find carla module ---------------------------------------------------------
@@ -37,13 +39,12 @@ def add(a, b):
     return a + b
 
 
-
 class CarlaDaemon:
 
-    def __init__(self, out_queue):
+    def __init__(self):
         self.client = None
         self.world = None
-        self.out_q = out_queue
+        self.vehicle = None
 
         # self.last_time = time.perf_counter()
 
@@ -67,16 +68,48 @@ class CarlaDaemon:
         """
 
         self.client = carla.Client('127.0.0.1', 2000)
-        self.out_q.put(StatusMessage('Client loaded'))
+        #self.out_q.put(StatusMessage('Client loaded'))
+
+        return True
 
     def load_world(self, map):
         if self.client is not None:
             self.client.load_world(map)
             self.client.set_timeout(10.0)
             self.world = self.client.get_world()
-            self.out_q.put(StatusMessage('World loaded'))
+            #self.out_q.put(StatusMessage('World loaded'))
         else:
-            self.out_q.put(StatusMessage('Client is None'))
+            #self.out_q.put(StatusMessage('Client is None'))
+            pass
+
+        return True
+
+    def change_weather(self, value_cloudiness, value_precipitation,
+                       value_deposits, value_wetness,
+                       value_sun_azimuth_angle, value_sun_altitude_angle):
+        if self.world is None:
+            return False
+
+        # print(value_cloudiness, value_precipitation, value_deposits, value_wetness, value_sun_azimuth_angle, value_sun_altitude_angle)
+        self.weather = self.world.get_weather()
+        self.weather.cloudiness = value_cloudiness
+        self.weather.precipitation = value_precipitation
+        self.weather.precipitation_deposits = value_deposits
+        self.weather.wind_intensity = 100
+        self.weather.fog_density = 0
+        self.weather.wetness = value_wetness
+        self.weather.sun_azimuth_angle = value_sun_azimuth_angle
+        self.weather.sun_altitude_angle = value_sun_altitude_angle
+
+        self.world.set_weather(self.weather)
+
+        return True
+
+    def get_status(self):
+        speed = 0.0
+        if self.vehicle is not None:
+            speed = self.vehicle.get_velocity().x
+        return '{:.02f} km/h'.format(speed)
 
     def main(self):
 
@@ -112,16 +145,19 @@ class CarlaDaemon:
 
         self.world.on_tick(lambda world_snapshot: self.do_something(world_snapshot))
 
-        while True:
+        # while True:
+        #
+        #     if not self._autopilot_active:
+        #         self._autopilot_active = True
+        #         self.vehicle.set_autopilot()
 
-            if not self._autopilot_active:
-                self._autopilot_active = True
-                self.vehicle.set_autopilot()
+        return True
 
     def do_something(self, world_snapshot):
 
-        t = self.vehicle.get_transform()
-        # v = self.vehicle.get_velocity()
+        # t = self.vehicle.get_transform()
+        v = self.vehicle.get_velocity()
+        print(v.x)
 
         # crt_time = time.perf_counter()
         # delta_time = crt_time - self.last_time
@@ -142,47 +178,18 @@ class CarlaDaemon:
         self.active = True
 
 
-# def client_thread(in_q, out_q):
-#
-#     cd = CarlaDaemon(out_q)
-#
-#     while True:
-#         # Get some data
-#         data = in_q.get()
-#
-#         # Process the data
-#         if data.cmd == 'load_client':
-#             cd.load_client()
-#         elif data.cmd == 'load_world':
-#             cd.load_world(data.param)
-#
-#     # Indicate completion
-#     in_q.task_done()
-
-
-from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.server import SimpleXMLRPCRequestHandler
-
-def client_thread_callme():
-
-    # Restrict to a particular path.
-    class RequestHandler(SimpleXMLRPCRequestHandler):
-        rpc_paths = ('/RPC2',)
+def client_thread():
 
     # Create server
-    server = SimpleXMLRPCServer(("localhost", 8000),
-                                requestHandler=RequestHandler)
+    with SimpleXMLRPCServer(('localhost', 8000)) as server:
 
-    def myfunction(x, y):
-        status = x*y
-        result = [x, y, x+y]
-        return (status, result)
+        server.register_introspection_functions()
 
-    server.register_function(myfunction)
+        # print("Listening on port 8000...")
+        # server.register_function(cd.load_client, 'load_client')
+        server.register_function(add, 'add')
 
-    print('tutu')
+        server.register_instance(CarlaDaemon())
 
-    # Run the server's main loop
-    server.serve_forever()
-
-    print('toto')
+        # Run the server's main loop
+        server.serve_forever()

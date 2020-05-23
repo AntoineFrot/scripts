@@ -2,48 +2,29 @@
 import os
 import sys
 import argparse
+import time
 
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 
-import queue
 from threading import Thread
-
-from carla_daemon import client_thread, client_thread_callme
-
-
-t2 = Thread(target=client_thread_callme, args=())
-t2.start()
-
-print('Started')
-
 import xmlrpc.client
-import time
 
-count = 1
-while True:
-    try:
-        s = xmlrpc.client.ServerProxy('http://localhost:8000')
-        print(s.myfunction(count, 4))
-        count += 1
-        time.sleep(1)
-    except:
-        pass
-sys.exit()
+from carla_daemon import client_thread
 
+MAX_STATUS_BUFFER_LEN = 8
 
-class CommObj:
-    cmd = None
-    param = None
-
-
-# Create the shared queue and launch both threads
-q_control = queue.Queue()
-q_status = queue.Queue()
-t1 = Thread(target=client_thread, args=(q_control, q_status))
+t1 = Thread(target=client_thread, args=())
 t1.start()
+
+# with xmlrpc.client.ServerProxy("http://localhost:8000/") as proxy:
+#     print(proxy.add(9, 5))
+#     print(proxy.system.listMethods())
+
+proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
+# print(proxy.add(123, 234))
 
 external_stylesheets = [dbc.themes.BOOTSTRAP, 'https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -85,9 +66,63 @@ ui_ip_adress = dbc.Col([
     ])
 ])
 
+ui_weather = dbc.Col([
+    html.H6('Weather'),
+    dbc.Col([
+        html.Label('Cloudiness'),
+        dcc.Slider(id='weather_cloudiness',
+                   min=0,
+                   max=100,
+                   step=1,
+                   value=0),
+    ]),
+    dbc.Col([
+        html.Label('Precipitation'),
+        dcc.Slider(id='weather_precipitation',
+                   min=0,
+                   max=100,
+                   step=1,
+                   value=0),
+    ]),
+    dbc.Col([
+        html.Label('Precipitation deposits'),
+        dcc.Slider(id='weather_deposits',
+                   min=0,
+                   max=100,
+                   step=1,
+                   value=0),
+    ]),
+    dbc.Col([
+        html.Label('Wetness'),
+        dcc.Slider(id='weather_wetness',
+                   min=0,
+                   max=100,
+                   step=1,
+                   value=0),
+    ]),
+    html.H6('Sun'),
+    dbc.Col([
+        html.Label('Azimuth angle'),
+        dcc.Slider(id='sun_azimuth_angle',
+                   min=0,
+                   max=180,
+                   step=1,
+                   value=90),
+    ]),
+    dbc.Col([
+        html.Label('Altitude angle'),
+        dcc.Slider(id='sun_altitude_angle',
+                   min=-90,
+                   max=90,
+                   step=1,
+                   value=0),
+    ]),
+])
+
 app.layout = dbc.Container([
     html.Div(id='devnull', children=''),
     html.Div(id='devnull2', children=''),
+    html.Div(id='devnull3', children=''),
     dcc.Interval(
         id='interval-component',
         interval=1*1000, # in milliseconds
@@ -98,14 +133,19 @@ app.layout = dbc.Container([
         html.H4('CARLA UI'),
     ]),
     dbc.Row([
+        dbc.Card(dbc.CardBody(ui_ip_adress),
+                 style={"width": "600px"}),
         html.Button('Connect to CARLA server', id='carla_load_client'),
     ]),
     dbc.Row([
-        dbc.Card(dbc.CardBody(ui_ip_adress)),
-        dbc.Card(dbc.CardBody(ui_towns)),
+        dbc.Card(dbc.CardBody(ui_towns),
+                 style={"width": "600px"}),
+        html.Button('Select town', id='carla_select_world'),
     ]),
     dbc.Row([
-        html.Button('Submit', id='submit'),
+        dbc.Card(dbc.CardBody(ui_weather),
+                 style={"width": "600px"}),
+        # html.Button('Select weather', id='carla_select_weather'),
     ]),
     dbc.Row([
         dcc.Textarea(
@@ -117,20 +157,19 @@ app.layout = dbc.Container([
 ])
 
 
-@app.callback(dash.dependencies.Output('status-area', 'value'),
-              [dash.dependencies.Input('interval-component', 'n_intervals')],
-              [dash.dependencies.State('status-area', 'value')])
-def update_status(n, status_buffer):
-    print('SIZE', q_status.qsize())
-    while True:
-        try:
-            status_msg = q_status.get(block=False)
-        except queue.Empty:
-            break
-        status_buffer += status_msg.value
-        status_buffer += '\n'
-    print('LEN', len(status_buffer))
-    return status_buffer
+# @app.callback(dash.dependencies.Output('status-area', 'value'),
+#               [dash.dependencies.Input('interval-component', 'n_intervals')],
+#               [dash.dependencies.State('status-area', 'value')])
+# def update_status(n, status_buffer):
+#     status_buffer_list = status_buffer.split('\n')
+#     if len(status_buffer_list) > MAX_STATUS_BUFFER_LEN:
+#         status_buffer_list.pop(1)
+#     try:
+#         msg = proxy.get_status()
+#     except:
+#         msg = '-no status available-'
+#     status_buffer_list.append(msg)
+#     return '\n'.join(status_buffer_list)
 
 
 @app.callback(
@@ -139,27 +178,37 @@ def update_status(n, status_buffer):
     [])
 def load_client(n_clicks):
     if n_clicks is not None:
-        print('load_client', n_clicks)
-        co = CommObj()
-        co.cmd = 'load_client'
-        q_control.put(co)
+        proxy.load_client()
     return ''
 
 
 @app.callback(
     dash.dependencies.Output('devnull2', 'children'),
-    [dash.dependencies.Input('submit', 'n_clicks')],
+    [dash.dependencies.Input('carla_select_world', 'n_clicks')],
     [dash.dependencies.State('dropdown_towns', 'value')])
 def load_world(n_clicks, value):
     if n_clicks is not None:
-        print('load_world', n_clicks, value)
-        co = CommObj()
-        co.cmd = 'load_world'
-        co.param = value
-        q_control.put(co)
+        proxy.load_world(value)
+    return ''
+
+@app.callback(
+    dash.dependencies.Output('devnull3', 'children'),
+    [dash.dependencies.Input('weather_cloudiness', 'value'),
+     dash.dependencies.Input('weather_precipitation', 'value'),
+     dash.dependencies.Input('weather_deposits', 'value'),
+     dash.dependencies.Input('weather_wetness', 'value'),
+     dash.dependencies.Input('sun_azimuth_angle', 'value'),
+     dash.dependencies.Input('sun_altitude_angle', 'value')
+     ])
+def change_weather(value_cloudiness, value_precipitation,
+                   value_deposits, value_wetness,
+                   value_sun_azimuth_angle, value_sun_altitude_angle):
+    proxy.change_weather(value_cloudiness, value_precipitation,
+                         value_deposits, value_wetness,
+                         value_sun_azimuth_angle, value_sun_altitude_angle)
     return ''
 
 
 if __name__ == '__main__':
 
-    app.run_server(debug=True)
+    app.run_server(debug=False)
