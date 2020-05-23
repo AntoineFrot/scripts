@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 
 from xmlrpc.server import SimpleXMLRPCServer
-from xmlrpc.server import SimpleXMLRPCRequestHandler
+# from xmlrpc.server import SimpleXMLRPCRequestHandler
 
 # ==============================================================================
 # -- find carla module ---------------------------------------------------------
@@ -26,6 +26,7 @@ except IndexError:
 import carla
 
 XMLRPC_PORT = 8123
+PERIOD_SPECTATOR_MOVEMENT = 0.01  # s
 
 
 class StatusMessage:
@@ -47,6 +48,8 @@ class CarlaDaemon:
         self.vehicle = None
 
         # self.last_time = time.perf_counter()
+
+        self.periodic_task_active = False
 
     def __del__(self):
         self.set_timing_settings(synchronous_mode=False)
@@ -78,6 +81,8 @@ class CarlaDaemon:
 
         try:
             self.world = self.client.get_world()
+            self.world.on_tick(lambda world_snapshot: self.move_spectator(world_snapshot))
+
         except:
             return False
         # now = datetime.now()
@@ -139,6 +144,7 @@ class CarlaDaemon:
         transform = random.choice(self.world.get_map().get_spawn_points())
         self.vehicle = self.world.try_spawn_actor(vehicle_bp, transform)
         self.vehicle.set_autopilot()
+
         return True
 
     # def main(self):
@@ -182,17 +188,37 @@ class CarlaDaemon:
     #             self.vehicle.set_autopilot()
     #
     #     return True
-    #
+
+    def move_spectator(self, world_snapshot):
+
+        # crt_time = time.perf_counter()
+        # delta_time = crt_time - self.last_time
+        # if delta_time < PERIOD_SPECTATOR_MOVEMENT:
+        #     return
+
+        # time_factor = world_snapshot.timestamp.delta_seconds/delta_time
+        # self.last_time = crt_time
+
+        if self.periodic_task_active:
+            return
+        self.periodic_task_active = True
+
+        if self.vehicle is not None:
+            spectator = self.world.get_spectator()
+            vehicle_transform = self.vehicle.get_transform()
+            yaw = vehicle_transform.rotation.yaw
+            spectator.set_transform(carla.Transform(vehicle_transform.location + carla.Location(-12.0 * math.cos(yaw/180.0*math.pi),
+                                                                                                -12.0 * math.sin(yaw/180.0*math.pi),
+                                                                                                3.0),
+                                                    carla.Rotation(yaw=yaw)))
+
+        self.periodic_task_active = False
+
     # def do_something(self, world_snapshot):
-    #
     #     # t = self.vehicle.get_transform()
     #     v = self.vehicle.get_velocity()
     #     print(v.x)
     #
-    #     # crt_time = time.perf_counter()
-    #     # delta_time = crt_time - self.last_time
-    #     # time_factor = world_snapshot.timestamp.delta_seconds/delta_time
-    #     # self.last_time = crt_time
     #     #
     #     # print('Frame ID #{}, x{:.03}, {:.06f} {:.06f} {:.06f} ({:.1f}, {:.1f})'.format(world_snapshot.frame,
     #     #                                                                                time_factor,
@@ -211,7 +237,7 @@ class CarlaDaemon:
 def client_thread():
 
     # Create server
-    with SimpleXMLRPCServer(('localhost', XMLRPC_PORT)) as server:
+    with SimpleXMLRPCServer(('localhost', XMLRPC_PORT), logRequests=False) as server:
 
         server.register_introspection_functions()
 
