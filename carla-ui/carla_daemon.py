@@ -91,10 +91,16 @@ class CarlaDaemon:
 
     def load_world(self, map):
         if self.client is not None:
+            self.client.set_timeout(20.0)
             self.client.load_world(map)
-            self.client.set_timeout(10.0)
             self.world = self.client.get_world()
+            self.client.set_timeout(2.0)
         return True
+
+    def get_maps_infos(self):
+        if self.client is not None:
+            return self.client.get_world().get_map().name, self.client.get_available_maps()
+        return None
 
     def change_weather(self, value_cloudiness, value_precipitation,
                        value_deposits, value_wetness,

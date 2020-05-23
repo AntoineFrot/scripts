@@ -9,7 +9,7 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 
 # Dash UI components
-from dash_uis import *
+import dash_uis
 
 # disable Dash HTTP log messages / see also SimpleXMLRPCServer: logRequests=False
 import logging
@@ -34,11 +34,12 @@ class CarlaUI:
 
     def __init__(self):
         self.proxy_is_active = False
+        self.towns_infos = None
 
         # Prevent execution of periodic task before __init__ has completed
         self.periodic_task_active = True
 
-        self.app.layout = ui_main
+        self.app.layout = dash_uis.ui_main
 
         # self.app.callback([dash.dependencies.Output('status-area', 'value'),
         #                    dash.dependencies.Output('client-status', 'value'),
@@ -58,7 +59,7 @@ class CarlaUI:
 
         self.app.callback(dash.dependencies.Output('hidden-div1', 'children'),
                           [dash.dependencies.Input('carla_select_world', 'n_clicks')],
-                          [dash.dependencies.State('dropdown_towns', 'value')
+                          [dash.dependencies.State('dropdown-towns', 'value')
                            ])(self.load_world)
 
         self.app.callback(dash.dependencies.Output('hidden-div2', 'children'),
@@ -73,6 +74,10 @@ class CarlaUI:
         self.app.callback(dash.dependencies.Output('hidden-div3', 'children'),
                           [dash.dependencies.Input('add_vehicle', 'n_clicks')
                            ])(self.add_vehicle)
+
+        self.app.callback(dash.dependencies.Output('dropdown-towns-div', 'children'),
+                          [dash.dependencies.Input('interval-component-slow', 'n_intervals')]
+        )(self.update_dropdown_towns)
 
         # Enables execution of periodic task
         self.periodic_task_active = False
@@ -89,6 +94,8 @@ class CarlaUI:
                 self.proxy.load_client()
                 self.proxy_is_active = True
                 msg = '-client loaded-'
+
+                self.towns_infos = self.proxy.get_maps_infos()
             except:
                 msg = '-client cannot be loaded-'
         else:
@@ -112,6 +119,13 @@ class CarlaUI:
         except:
             return 0.0
 
+    def update_dropdown_towns(self, n):
+        if self.towns_infos is not None:
+            selected_town, list_towns = self.towns_infos
+            self.towns_infos = None
+            return dash_uis.get_dropdown_towns(selected_town, list_towns)
+        raise PreventUpdate
+
     # def periodic_task(self, n, status_buffer):
     #
     #     # if n<10:
@@ -133,7 +147,7 @@ class CarlaUI:
     #     try:
     #         self.proxy.load_client()
     #
-    #         self.maps_list = self.proxy.call_obj_method('client', 'get_available_maps')
+    #
     #
     #         try:
     #             msg = self.proxy.get_status()

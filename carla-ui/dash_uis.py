@@ -3,28 +3,30 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 import dash_daq as daq
 
+
+def get_dropdown_towns(selected_town='', list_towns=[]):
+    try:
+        list_towns = [t.split("/")[-1] for t in list_towns]
+    except:
+        pass
+
+    dropdown_list = [{'label': t, 'value': t} for t in sorted(list_towns)]
+
+    return dcc.Dropdown(
+        id='dropdown-towns',
+        options=dropdown_list,
+        value=selected_town,
+        clearable=False,
+        style=dict(
+            width='150px',
+            verticalAlign="middle"
+        )
+    )
+
 ui_towns = dbc.Col([
     # html.H6('Towns'),
     dbc.Col([
-        dcc.Dropdown(
-            id='dropdown_towns',
-            options=[
-                {'label': 'Town01', 'value': 'Town01'},
-                {'label': 'Town02', 'value': 'Town02'},
-                {'label': 'Town03', 'value': 'Town03'},
-                {'label': 'Town04', 'value': 'Town04'},
-                {'label': 'Town05', 'value': 'Town05'},
-                {'label': 'Town06', 'value': 'Town06'},
-                {'label': 'Town07', 'value': 'Town07'},
-                {'label': 'Town10HD', 'value': 'Town10HD'}
-            ],
-            value='Town06',
-            clearable=False,
-            style=dict(
-                width='150px',
-                verticalAlign="middle"
-            )
-        ),
+        html.Div(id='dropdown-towns-div', children=get_dropdown_towns()),
         html.Button('Select town', id='carla_select_world'),
     ])
 ])
