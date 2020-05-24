@@ -95,6 +95,7 @@ class CarlaDaemon:
             self.client.load_world(map)
             self.world = self.client.get_world()
             self.client.set_timeout(2.0)
+            print('Selected map:', map)
         return True
 
     def get_maps_infos(self):
@@ -137,6 +138,13 @@ class CarlaDaemon:
         # print('Added:', self.vehicle.id, self.vehicle)
         return True
 
+    def destroy_all_vehicles(self):
+        if self.world is not None:
+            for actor in self.world.get_actors().filter('vehicle.*'):
+                if actor is not None:
+                    actor.destroy()
+        return True
+
     def get_vehicles(self):
         if self.world is not None:
             vehicles = self.world.get_actors().filter('vehicle.*')
@@ -145,7 +153,7 @@ class CarlaDaemon:
     def select_vehicle(self, veh_id):
         if self.world is not None:
             self.vehicle = self.world.get_actor(veh_id)
-            print('Selected:', self.vehicle.id, self.vehicle)
+            # print('Selected:', self.vehicle.id, self.vehicle)
         return True
 
     def get_vehicle_speed(self):

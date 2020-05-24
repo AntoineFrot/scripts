@@ -28,3 +28,7 @@ except IndexError:
 ```shell
 python3 carla-ui.py
 ```
+
+### Gallery
+
+![](doc/carla-ui.png)

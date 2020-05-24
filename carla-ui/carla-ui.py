@@ -68,13 +68,17 @@ class CarlaUI:
                           [Input('add_vehicle', 'n_clicks')
                            ])(self.add_vehicle)
 
+        self.app.callback(Output('hidden-div4', 'children'),
+                          [Input('destroy_vehicles', 'n_clicks')
+                           ])(self.destroy_all_vehicles)
+
         self.app.callback(Output('dropdown-towns-div', 'children'),
                           [Input('interval-component-slow', 'n_intervals')])(self.update_dropdown_towns)
 
         self.app.callback(Output('dropdown-vehicles-div', 'children'),
                           [Input('interval-component-slow', 'n_intervals')])(self.update_dropdown_vehicles)
 
-        self.app.callback(Output('hidden-div4', 'children'),
+        self.app.callback(Output('hidden-div5', 'children'),
                           [Input('dropdown-vehicles', 'value')])(self.select_vehicle)
 
         #     client_status_color = "#00cc96"
@@ -147,7 +151,7 @@ class CarlaUI:
         raise PreventUpdate
 
     def load_world_async(self, value):
-        print('load_world_async', value)
+        # print('load_world_async', value)
         self.proxy.load_world(value)
 
     def change_weather(self, value_cloudiness, value_precipitation, value_deposits,
@@ -171,9 +175,22 @@ class CarlaUI:
         time.sleep(DELAY_GET_VEHICLE_LIST)
         self.vehicles_list = self.proxy.get_vehicles()
 
+    def destroy_all_vehicles(self, n_clicks):
+        if self.proxy_is_active and n_clicks is not None:
+            Thread(target=self.destroy_all_vehicles_async, args=()).start()
+        raise PreventUpdate
+
+    def destroy_all_vehicles_async(self):
+        try:
+            self.proxy.destroy_all_vehicles()
+        except:
+            pass
+        time.sleep(DELAY_GET_VEHICLE_LIST)
+        self.vehicles_list = self.proxy.get_vehicles()
+
     def select_vehicle(self, veh_id):
         if self.proxy_is_active and veh_id != '':
-            print('select_vehicle', veh_id)
+            # print('select_vehicle', veh_id)
             self.proxy.select_vehicle(veh_id)
         raise PreventUpdate
 

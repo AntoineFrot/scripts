@@ -123,6 +123,7 @@ ui_weather = dbc.Col([
 
 ui_vehicle = dbc.Col([
     html.Button('Add vehicle', id='add_vehicle'),
+    html.Button('Destroy all vehicles', id='destroy_vehicles'),
     html.Div(id='dropdown-vehicles-div', children=get_dropdown_vehicles()),
 
     daq.Gauge(
@@ -144,6 +145,7 @@ ui_main = dbc.Container([
     html.Div(id='hidden-div2', style={'display': 'none'}),
     html.Div(id='hidden-div3', style={'display': 'none'}),
     html.Div(id='hidden-div4', style={'display': 'none'}),
+    html.Div(id='hidden-div5', style={'display': 'none'}),
     dcc.Interval(
         id='interval-component-fast',
         interval=100,  # in milliseconds
