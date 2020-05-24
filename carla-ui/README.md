@@ -17,6 +17,12 @@ except IndexError:
     sys.exit()
 ```
 
+> Start **CARLA server** in a dedicated console, serving on port 2000.
+
+```shell
+./CarlaUE4.sh -resX=640 -resY=480
+```
+
 > Start **carla-ui.py**
 
 ```shell
