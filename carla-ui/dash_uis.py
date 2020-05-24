@@ -23,8 +23,24 @@ def get_dropdown_towns(selected_town='', list_towns=[]):
         )
     )
 
+
+def get_dropdown_vehicles(selected_vehicle='', list_vehicles=[]):
+
+    dropdown_list = [{'label': veh_id, 'value': veh_id} for veh_id in sorted(list_vehicles)]
+
+    return dcc.Dropdown(
+        id='dropdown-vehicles',
+        options=dropdown_list,
+        value=selected_vehicle,
+        clearable=False,
+        style=dict(
+            width='200px',
+            verticalAlign="middle"
+        )
+    )
+
+
 ui_towns = dbc.Col([
-    # html.H6('Towns'),
     dbc.Col([
         html.Div(id='dropdown-towns-div', children=get_dropdown_towns()),
         html.Button('Select town', id='carla_select_world'),
@@ -107,6 +123,8 @@ ui_weather = dbc.Col([
 
 ui_vehicle = dbc.Col([
     html.Button('Add vehicle', id='add_vehicle'),
+    html.Div(id='dropdown-vehicles-div', children=get_dropdown_vehicles()),
+
     daq.Gauge(
         id='speed-gauge',
         min=0,
@@ -125,6 +143,7 @@ ui_main = dbc.Container([
     html.Div(id='hidden-div1', style={'display': 'none'}),
     html.Div(id='hidden-div2', style={'display': 'none'}),
     html.Div(id='hidden-div3', style={'display': 'none'}),
+    html.Div(id='hidden-div4', style={'display': 'none'}),
     dcc.Interval(
         id='interval-component-fast',
         interval=100,  # in milliseconds

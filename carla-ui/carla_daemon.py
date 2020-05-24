@@ -129,18 +129,30 @@ class CarlaDaemon:
         loc = self.vehicle.get_location()
         return '({:.02f}, {:.02f}) '.format(loc.x, loc.y)
 
-    def get_vehicle_speed(self):
-        if self.vehicle is None:
-            return 0.0
-        v = self.vehicle.get_velocity()
-        return 3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
-
     def add_vehicle(self):
         vehicle_bp = random.choice(self.world.get_blueprint_library().filter(DEFAULT_VEHICLE))
         transform = random.choice(self.world.get_map().get_spawn_points())
         self.vehicle = self.world.try_spawn_actor(vehicle_bp, transform)
         self.vehicle.set_autopilot()
+        # print('Added:', self.vehicle.id, self.vehicle)
         return True
+
+    def get_vehicles(self):
+        if self.world is not None:
+            vehicles = self.world.get_actors().filter('vehicle.*')
+        return [veh.id for veh in vehicles]
+
+    def select_vehicle(self, veh_id):
+        if self.world is not None:
+            self.vehicle = self.world.get_actor(veh_id)
+            print('Selected:', self.vehicle.id, self.vehicle)
+        return True
+
+    def get_vehicle_speed(self):
+        if self.vehicle is None:
+            return 0.0
+        v = self.vehicle.get_velocity()
+        return 3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
 
     def move_spectator(self):
 
@@ -153,75 +165,6 @@ class CarlaDaemon:
                                                                    SPECTATOR_POS_X * math.sin(yaw/180.0*math.pi),
                                                                    SPECTATOR_POS_Z),
                                                     carla.Rotation(yaw=yaw)))
-
-    # def main(self):
-    #
-    #     self.weather = self.world.get_weather()
-    #     self.weather.cloudiness = 0
-    #     self.weather.precipitation = 0
-    #     self.weather.precipitation_deposits = 0
-    #     self.weather.wind_intensity = 100
-    #     self.weather.fog_density = 0
-    #     self.weather.wetness = 0
-    #     self.weather.sun_azimuth_angle = 45
-    #     self.weather.sun_altitude_angle = 45
-    #
-    #     self.world.set_weather(self.weather)
-    #
-    #     self.set_timing_settings(True)
-    #
-    #     blueprint = random.choice(self.world.get_blueprint_library().filter('vehicle.*'))
-    #     self.map = self.world.get_map()
-    #     spawn_points = self.map.get_spawn_points()
-    #
-    #     # for i, waypoint in enumerate(spawn_points):
-    #     #     self.world.debug.draw_string(waypoint.location, str(i), draw_shadow=False,
-    #     #                             color=carla.Color(r=255, g=255, b=255), life_time=10000.2,
-    #     #                             persistent_lines=True)
-    #
-    #     vehicle_bp = random.choice(self.world.get_blueprint_library().filter(DEFAULT_VEHICLE))
-    #     transform = random.choice(self.world.get_map().get_spawn_points())
-    #     self.vehicle = self.world.try_spawn_actor(vehicle_bp, transform)
-    #     # self.vehicle.set_velocity(carla.Vector3D(100, 100, 100))
-    #
-    #     self._autopilot_active = False
-    #
-    #     self.world.on_tick(lambda world_snapshot: self.do_something(world_snapshot))
-    #
-    #     while True:
-    #
-    #         if not self._autopilot_active:
-    #             self._autopilot_active = True
-    #             self.vehicle.set_autopilot()
-    #
-    #     return True
-
-
-    # def do_something(self, world_snapshot):
-    # crt_time = time.perf_counter()
-    #         # delta_time = crt_time - self.last_time
-    #         # if delta_time < PERIOD_SPECTATOR_MOVEMENT:
-    #         #     return
-    #
-    #         # time_factor = world_snapshot.timestamp.delta_seconds/delta_time
-    #         # self.last_time = crt_time
-    #     # t = self.vehicle.get_transform()
-    #     v = self.vehicle.get_velocity()
-    #     print(v.x)
-    #
-    #     #
-    #     # print('Frame ID #{}, x{:.03}, {:.06f} {:.06f} {:.06f} ({:.1f}, {:.1f})'.format(world_snapshot.frame,
-    #     #                                                                                time_factor,
-    #     #                                                                                world_snapshot.timestamp.elapsed_seconds,
-    #     #                                                                                world_snapshot.timestamp.delta_seconds,
-    #     #                                                                                delta_time,
-    #     #                                                                                t.location.x,
-    #     #                                                                                t.location.y,
-    #     #                                                                                f.x[0],
-    #     #                                                                                fy.x[0]))
-    #
-    #
-    #     self.active = True
 
 
 def xmlrpc_serving_CarlaDaemon():
