@@ -32,3 +32,10 @@ python3 carla-ui.py
 ### Gallery
 
 ![](doc/carla-ui.png)
+
+### Known issues
+
+ - IP address is not used
+ - Green LED next to IP address is also inactive
+ - Status panel has a reduced functionality
+ 
